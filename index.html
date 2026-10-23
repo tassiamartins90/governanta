@@ -1,0 +1,581 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Governanta</title>
+<meta name="description" content="Manutenções e suprimentos da casa.">
+<meta name="theme-color" content="#1A3535">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon-192.png" type="image/png">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<script src="config.js"></script>
+<style>
+/* Layout: app de coluna única, cabeçalho fixo com abas, lista de cartões, folhas modais por baixo */
+:root {
+  --bg:#F0EDE6; --card:#FFFFFF; --header:#1A3535; --header-fg:#E6E2D8; --accent:#B87A28;
+  --fg:#1A2C2C; --fg2:#5A7070; --border:#D8D4CC;
+  --ok:#1D6B3A; --ok-bg:#D4EDDF; --warn:#7A5A00; --warn-bg:#FFF0C0; --danger:#B02020; --danger-bg:#FAD8D8;
+  --chip:#E4E0D8; --chip-fg:#1A2C2C; --chip-on:#1A3535; --chip-on-fg:#E6E2D8;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg:#111C1C; --card:#192525; --header:#0C1C1C; --header-fg:#D4D0C6; --accent:#C98A2E;
+    --fg:#E0DCD2; --fg2:#7A9E9E; --border:#273434;
+    --ok:#4CAF78; --ok-bg:#0F3020; --warn:#CCA830; --warn-bg:#2C2200; --danger:#E06060; --danger-bg:#2C0808;
+    --chip:#1F3030; --chip-fg:#D4D0C6; --chip-on:#C98A2E; --chip-on-fg:#111C1C;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg:#111C1C; --card:#192525; --header:#0C1C1C; --header-fg:#D4D0C6; --accent:#C98A2E;
+  --fg:#E0DCD2; --fg2:#7A9E9E; --border:#273434;
+  --ok:#4CAF78; --ok-bg:#0F3020; --warn:#CCA830; --warn-bg:#2C2200; --danger:#E06060; --danger-bg:#2C0808;
+  --chip:#1F3030; --chip-fg:#D4D0C6; --chip-on:#C98A2E; --chip-on-fg:#111C1C;
+  color-scheme: dark;
+}
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+[hidden] { display: none !important; }
+img { max-width: 100%; }
+body { font-family: system-ui, -apple-system, sans-serif; font-size: 15px; background: var(--bg); color: var(--fg); min-height: 100%; }
+.gut { padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+
+.header { background: var(--header); color: var(--header-fg); padding-block: 12px 0; position: sticky; top: env(safe-area-inset-top, 0px); z-index: 100; }
+body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-area-inset-top, 0px); background: var(--header); z-index: 101; }
+.header-row { display: flex; align-items: center; justify-content: space-between; padding-bottom: 10px; }
+.header h1 { font-size: 1.05rem; font-weight: 700; display: flex; align-items: center; gap: 7px; }
+.header-btns { display: flex; gap: 6px; }
+.icon-btn { background: rgba(255,255,255,.12); border: none; color: var(--header-fg); width: 34px; height: 34px; border-radius: 8px; cursor: pointer; font-size: 1rem; display: flex; align-items: center; justify-content: center; }
+.icon-btn:hover { background: rgba(255,255,255,.22); }
+.abas { display: flex; border-top: 1px solid rgba(255,255,255,.08); }
+.aba { flex: 1; padding: 9px 4px; background: none; border: none; border-bottom: 2px solid transparent; color: var(--header-fg); opacity: .55; font-size: .84rem; font-weight: 600; cursor: pointer; white-space: nowrap; }
+.aba.ativa { opacity: 1; border-bottom-color: var(--accent); }
+
+.aviso { margin-top: 12px; background: var(--warn-bg); color: var(--warn); border: 1px solid var(--warn); border-radius: 10px; padding: 10px 12px; font-size: .86rem; display: flex; gap: 10px; align-items: center; justify-content: space-between; flex-wrap: wrap; }
+.aviso button { background: var(--accent); color: #fff; border: none; border-radius: 8px; padding: 7px 12px; font-weight: 700; cursor: pointer; font-size: .84rem; }
+
+.search-wrap { padding-block: 12px 0; }
+.search-wrap input { width: 100%; padding: 10px 14px; border: 1px solid var(--border); border-radius: 10px; background: var(--card); color: var(--fg); font-size: 15px; font-family: inherit; }
+.search-wrap input::placeholder { color: var(--fg2); }
+
+.filtros { display: flex; gap: 8px; padding-block: 10px 0; overflow-x: auto; scrollbar-width: none; }
+.filtros:empty { display: none; }
+.filtros::-webkit-scrollbar { display: none; }
+.chip { flex-shrink: 0; padding: 5px 12px; border-radius: 20px; border: none; background: var(--chip); color: var(--chip-fg); font-size: .82rem; font-weight: 500; cursor: pointer; white-space: nowrap; }
+.chip.ativo { background: var(--chip-on); color: var(--chip-on-fg); }
+
+.lista { padding-block: 10px 90px; display: flex; flex-direction: column; gap: 10px; }
+.card { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 14px; cursor: pointer; }
+.card:active { transform: scale(.98); }
+.card-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 8px; }
+.card-top > div { min-width: 0; }
+.card-title { font-weight: 600; font-size: .95rem; line-height: 1.3; }
+.card-cat { font-size: .78rem; color: var(--fg2); margin-top: 2px; }
+.badge { font-size: .71rem; font-weight: 700; padding: 3px 8px; border-radius: 10px; white-space: nowrap; flex-shrink: 0; }
+.badge-ok { background: var(--ok-bg); color: var(--ok); }
+.badge-warn { background: var(--warn-bg); color: var(--warn); }
+.badge-danger { background: var(--danger-bg); color: var(--danger); }
+.card-info { font-size: .82rem; color: var(--fg2); margin-top: 6px; }
+.mini-grafico { display: flex; align-items: center; gap: 8px; margin-top: 8px; padding-top: 8px; border-top: 1px solid var(--border); }
+.mini-label { font-size: .78rem; color: var(--fg2); white-space: nowrap; font-variant-numeric: tabular-nums; }
+.vazio { text-align: center; padding: 48px 16px; color: var(--fg2); }
+.vazio .emoji { font-size: 2.5rem; display: block; margin-bottom: 12px; }
+
+.overlay { position: fixed; inset: 0; background: rgba(0,0,0,.52); z-index: 200; display: flex; align-items: flex-end; justify-content: center; }
+.modal { background: var(--card); border-radius: 20px 20px 0 0; width: 100%; max-width: 600px; max-height: 90vh; overflow-y: auto; padding-block: 20px calc(36px + env(safe-area-inset-bottom, 0px)); }
+.modal-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; }
+.modal-header h2 { font-size: 1.05rem; font-weight: 700; }
+.close-btn { background: none; border: none; font-size: 1.35rem; cursor: pointer; color: var(--fg2); line-height: 1; padding: 4px; }
+.campo { margin-bottom: 14px; }
+.campo label { display: block; font-size: .78rem; font-weight: 700; margin-bottom: 4px; color: var(--fg2); text-transform: uppercase; letter-spacing: .04em; }
+.campo input, .campo select, .campo textarea { width: 100%; padding: 10px 12px; border: 1px solid var(--border); border-radius: 8px; background: var(--bg); color: var(--fg); font-size: 15px; font-family: inherit; appearance: none; }
+.campo textarea { resize: vertical; min-height: 70px; }
+.row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.btn-salvar, .btn-editar { width: 100%; padding: 13px; background: var(--accent); color: #fff; border: none; border-radius: 10px; font-size: 1rem; font-weight: 700; cursor: pointer; margin-top: 4px; }
+.btn-editar { margin-top: 16px; }
+.btn-deletar { width: 100%; padding: 10px; background: none; color: var(--danger); border: 1px solid var(--danger); border-radius: 10px; font-size: .9rem; cursor: pointer; margin-top: 8px; }
+.detalhe-grid { display: flex; flex-direction: column; gap: 10px; }
+.detalhe-row { display: flex; flex-direction: column; gap: 2px; }
+.detalhe-label { font-size: .74rem; font-weight: 700; color: var(--fg2); text-transform: uppercase; letter-spacing: .05em; }
+.detalhe-val { font-size: .95rem; word-break: break-word; }
+.confirm-panel { margin-top: 10px; background: var(--danger-bg); border: 1px solid var(--danger); border-radius: 10px; padding: 12px; text-align: center; }
+.confirm-panel p { font-size: .9rem; margin-bottom: 10px; color: var(--fg); }
+.confirm-row { display: flex; gap: 8px; }
+.confirm-row button { flex: 1; padding: 9px; border-radius: 8px; font-size: .9rem; font-weight: 600; cursor: pointer; }
+#btn-confirm-nao { border: 1px solid var(--border); background: none; color: var(--fg); }
+#btn-confirm-sim { border: none; background: var(--danger); color: #fff; }
+
+.salvando { position: fixed; inset: 0; background: rgba(0,0,0,.45); z-index: 500; display: flex; align-items: center; justify-content: center; flex-direction: column; gap: 14px; color: #fff; font-size: .95rem; font-weight: 600; }
+.spinner { width: 36px; height: 36px; border: 3px solid rgba(255,255,255,.2); border-top-color: var(--accent); border-radius: 50%; animation: spin .8s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { .spinner { animation-duration: 3s; } }
+.toast { position: fixed; bottom: calc(24px + env(safe-area-inset-bottom, 0px)); left: 50%; transform: translateX(-50%) translateY(120px); background: var(--header); color: var(--header-fg); padding: 10px 20px; border-radius: 20px; font-size: .88rem; transition: transform .3s; z-index: 999; pointer-events: none; max-width: calc(100% - 32px); text-align: center; box-shadow: 0 4px 16px rgba(0,0,0,.2); }
+.toast.show { transform: translateX(-50%) translateY(0); }
+button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+.marca { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; min-width: 0; }
+.marca small { font-size: .74rem; opacity: .7; }
+.rodape { text-align: center; margin-top: -70px; padding-bottom: 40px; }
+.link { background: none; border: none; color: var(--fg2); text-decoration: underline; font-size: .85rem; cursor: pointer; padding: 8px; }
+.tela { min-height: 100vh; display: flex; align-items: center; justify-content: center; padding-block: 32px; }
+.painel { width: 100%; max-width: 380px; background: var(--card); border: 1px solid var(--border); border-radius: 16px; padding: 24px 20px; }
+.painel h1 { font-size: 1.3rem; margin-bottom: 4px; display: flex; gap: 8px; align-items: center; }
+.painel p { color: var(--fg2); font-size: .9rem; line-height: 1.45; margin-bottom: 16px; }
+.painel .campo input { background: var(--bg); }
+.erro { color: var(--danger); font-size: .86rem; min-height: 1.2em; margin: 4px 0 10px; }
+.btn-sec { width: 100%; padding: 11px; background: none; color: var(--fg); border: 1px solid var(--border); border-radius: 10px; font-size: .95rem; font-weight: 600; cursor: pointer; margin-top: 8px; }
+.painel code { background: var(--chip); padding: 1px 5px; border-radius: 4px; font-size: .85em; }
+</style>
+</head>
+<body>
+
+<section class="tela gut" id="tela-config" hidden>
+  <div class="painel">
+    <h1>🏠 Governanta</h1>
+    <p>Falta ligar o app ao banco de dados. Abra o arquivo <code>config.js</code> no GitHub e cole os valores do Firebase no lugar de <code>COLE_AQUI</code>.</p>
+  </div>
+</section>
+
+<section class="tela gut" id="tela-login" hidden>
+  <form class="painel" id="form-login" novalidate>
+    <h1>🏠 Governanta</h1>
+    <p>Entre com o seu e-mail. Na primeira vez, digite e-mail e uma senha e toque em Criar conta.</p>
+    <div class="campo"><label for="l-email">E-mail</label><input type="email" id="l-email" autocomplete="username" inputmode="email"></div>
+    <div class="campo"><label for="l-senha">Senha</label><input type="password" id="l-senha" autocomplete="current-password"></div>
+    <div class="erro" id="login-erro" role="alert"></div>
+    <button class="btn-salvar" type="submit">Entrar</button>
+    <button class="btn-sec" type="button" id="btn-criar">Criar conta</button>
+    <p style="text-align:center;margin:12px 0 0"><button class="link" type="button" id="btn-esqueci">Esqueci a senha</button></p>
+  </form>
+</section>
+
+<div id="app" hidden>
+
+<div class="header">
+  <div class="header-row gut">
+    <div class="marca"><h1>🏠 Governanta</h1><small id="sync">conectando…</small></div>
+    <div class="header-btns">
+      <button class="icon-btn" id="btn-instalar" title="Instalar app" aria-label="Instalar app" hidden>📲</button>
+      <button class="icon-btn" id="btn-import" title="Importar registros" aria-label="Importar registros">⬆</button>
+      <button class="icon-btn" id="btn-export" title="Baixar cópia de segurança" aria-label="Baixar cópia de segurança">⬇</button>
+      <button class="icon-btn" id="btn-add" title="Novo registro" aria-label="Novo registro">＋</button>
+    </div>
+  </div>
+  <div class="abas gut">
+    <button class="aba ativa" data-aba="todos">Todos</button>
+    <button class="aba" data-aba="manutencoes">🔧 Manutenções</button>
+    <button class="aba" data-aba="suprimentos">🛒 Suprimentos</button>
+  </div>
+</div>
+<div class="gut">
+  <div class="search-wrap"><input type="search" id="busca" placeholder="Buscar item, fornecedor, observação…"></div>
+  <div class="filtros" id="filtros"></div>
+  <div class="lista" id="lista"></div>
+  <p class="rodape"><button class="link" id="btn-sair" type="button">Sair da conta</button></p>
+</div>
+
+<div class="overlay" id="ov-form" hidden>
+  <div class="modal gut">
+    <div class="modal-header"><h2 id="form-titulo">Novo registro</h2><button class="close-btn" id="btn-fechar-form" aria-label="Fechar">✕</button></div>
+    <div class="campo"><label for="f-categoria">Categoria</label>
+      <select id="f-categoria">
+        <option value="Chuveiro">🚿 Chuveiro</option>
+        <option value="Gás de cozinha">🔥 Gás de cozinha</option>
+        <option value="Eletrodoméstico">🔌 Eletrodoméstico</option>
+        <option value="Hidráulica">🪠 Hidráulica</option>
+        <option value="Elétrica">💡 Elétrica</option>
+        <option value="Pintura">🎨 Pintura</option>
+        <option value="Ar-condicionado">❄️ Ar-condicionado</option>
+        <option value="Filtro de água">💧 Filtro de água</option>
+        <option value="Extintor">🧯 Extintor</option>
+        <option value="Outro">📦 Outro</option>
+      </select></div>
+    <div class="campo"><label for="f-item">Item / aparelho</label><input type="text" id="f-item" placeholder="Ex: Chuveiro do banheiro suíte"></div>
+    <div class="row2">
+      <div class="campo"><label for="f-data">Data</label><input type="date" id="f-data"></div>
+      <div class="campo"><label for="f-valor">Valor (R$)</label><input type="text" id="f-valor" inputmode="decimal" placeholder="0,00"></div>
+    </div>
+    <div class="campo"><label for="f-acao">Ação realizada</label><input type="text" id="f-acao" placeholder="Ex: Troca de resistência 220V"></div>
+    <div class="campo"><label for="f-spec">Especificação técnica</label><input type="text" id="f-spec" placeholder="Ex: Resistência 220V 5500W"></div>
+    <div class="campo"><label for="f-forn">Fornecedor / loja</label><input type="text" id="f-forn" placeholder="Nome e contato"></div>
+    <div class="row2">
+      <div class="campo"><label for="f-quem">Quem fez</label><input type="text" id="f-quem" placeholder="Técnico ou você"></div>
+      <div class="campo" id="campo-proxima"><label for="f-proxima">Próxima revisão</label><input type="date" id="f-proxima"></div>
+    </div>
+    <div class="campo"><label for="f-obs">Observações</label><textarea id="f-obs" placeholder="Detalhes adicionais…"></textarea></div>
+    <button class="btn-salvar" id="btn-salvar">Salvar registro</button>
+    <button class="btn-deletar" id="btn-deletar" hidden>Excluir este registro</button>
+    <div class="confirm-panel" id="confirm-excluir" hidden>
+      <p>Confirmar exclusão permanente?</p>
+      <div class="confirm-row"><button id="btn-confirm-nao">Cancelar</button><button id="btn-confirm-sim">Excluir</button></div>
+    </div>
+  </div>
+</div>
+
+<div class="overlay" id="ov-detalhe" hidden>
+  <div class="modal gut">
+    <div class="modal-header"><h2 id="det-titulo">Detalhe</h2><button class="close-btn" id="btn-fechar-det" aria-label="Fechar">✕</button></div>
+    <div class="detalhe-grid" id="det-grid"></div>
+    <button class="btn-editar" id="btn-editar">✏️ Editar</button>
+  </div>
+</div>
+
+</div>
+<div class="toast" id="toast" role="status"></div>
+<input type="file" id="file-import" accept=".json,application/json" hidden>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, createUserWithEmailAndPassword, sendPasswordResetEmail, signOut } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+import { initializeFirestore, persistentLocalCache, persistentMultipleTabManager, collection, doc, setDoc, deleteDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+
+const $ = id => document.getElementById(id);
+window.__govOK = true;
+
+// ── TELAS ──────────────────────────────────────────────────────
+function mostrar(tela) {
+  ["tela-config", "tela-login", "app"].forEach(t => { $(t).hidden = t !== tela; });
+}
+
+// ── CONFIGURAÇÃO ───────────────────────────────────────────────
+const cfg = window.GOVERNANTA_FIREBASE || {};
+const configurado = cfg.apiKey && cfg.apiKey !== "COLE_AQUI" && cfg.projectId && cfg.projectId !== "COLE_AQUI";
+
+// ── INSTALAÇÃO ─────────────────────────────────────────────────
+let pedidoInstalar = null;
+window.addEventListener("beforeinstallprompt", e => { e.preventDefault(); pedidoInstalar = e; $("btn-instalar").hidden = false; });
+window.addEventListener("appinstalled", () => { $("btn-instalar").hidden = true; pedidoInstalar = null; toast("Governanta instalada ✓"); });
+$("btn-instalar").addEventListener("click", async () => {
+  if (!pedidoInstalar) return;
+  pedidoInstalar.prompt();
+  try { await pedidoInstalar.userChoice; } catch (e) {}
+  pedidoInstalar = null; $("btn-instalar").hidden = true;
+});
+if ("serviceWorker" in navigator) { navigator.serviceWorker.register("./sw.js").catch(() => {}); }
+
+// ── ESTADO ─────────────────────────────────────────────────────
+let dados = [], carregado = false, cancelarEscuta = null;
+let auth = null, db = null;
+const ICONES = { "Chuveiro":"🚿","Gás de cozinha":"🔥","Eletrodoméstico":"🔌","Hidráulica":"🪠","Elétrica":"💡","Pintura":"🎨","Ar-condicionado":"❄️","Filtro de água":"💧","Extintor":"🧯","Outro":"📦" };
+const icone = c => ICONES[c] || "📦";
+const CAT_SUPRIMENTOS = new Set(["Gás de cozinha"]);
+const CAMPOS = ["item", "data", "valor", "acao", "spec", "forn", "quem", "proxima", "obs"];
+let abaAtual = "todos", filtroAtual = "", buscaAtual = "", editandoId = null, viewId = null;
+
+if (!configurado) {
+  mostrar("tela-config");
+} else {
+  const app = initializeApp(cfg);
+  auth = getAuth(app);
+  db = initializeFirestore(app, { localCache: persistentLocalCache({ tabManager: persistentMultipleTabManager() }) });
+  onAuthStateChanged(auth, user => {
+    if (cancelarEscuta) { cancelarEscuta(); cancelarEscuta = null; }
+    if (!user) { dados = []; carregado = false; mostrar("tela-login"); return; }
+    mostrar("app");
+    $("sync").textContent = "conectando…";
+    carregado = false; render();
+    cancelarEscuta = onSnapshot(collection(db, "registros"), { includeMetadataChanges: true }, snap => {
+      dados = snap.docs.map(d => Object.assign({ id: d.id }, d.data()));
+      carregado = true;
+      $("sync").textContent = snap.metadata.fromCache ? "sem internet · mostrando o que está no aparelho" : (snap.metadata.hasPendingWrites ? "enviando…" : "sincronizado");
+      render();
+    }, err => {
+      carregado = true; render();
+      $("sync").textContent = "sem acesso";
+      if (err && err.code === "permission-denied") toast("Esta conta não tem acesso. O e-mail precisa estar nas regras do banco.");
+      else toast("Não consegui ler os dados. Verifique a internet.");
+    });
+  });
+}
+
+// ── LOGIN ──────────────────────────────────────────────────────
+const MSG_AUTH = {
+  "auth/invalid-credential": "E-mail ou senha incorretos.",
+  "auth/wrong-password": "E-mail ou senha incorretos.",
+  "auth/user-not-found": "Não há conta com esse e-mail. Toque em Criar conta.",
+  "auth/invalid-email": "Esse e-mail não parece válido.",
+  "auth/email-already-in-use": "Já existe conta com esse e-mail. Toque em Entrar.",
+  "auth/weak-password": "A senha precisa ter pelo menos 6 caracteres.",
+  "auth/missing-password": "Digite a senha.",
+  "auth/network-request-failed": "Sem internet. Conecte-se e tente de novo.",
+  "auth/too-many-requests": "Muitas tentativas. Espere alguns minutos.",
+  "auth/operation-not-allowed": "O login por e-mail não foi ativado no Firebase (passo de Authentication)."
+};
+const erroLogin = e => { $("login-erro").textContent = MSG_AUTH[e && e.code] || ("Não foi possível entrar (" + ((e && e.code) || "erro") + ")."); };
+async function entrar(criar) {
+  if (!auth) return;
+  const email = $("l-email").value.trim(), senha = $("l-senha").value;
+  $("login-erro").textContent = "";
+  if (!email) { $("login-erro").textContent = "Digite o e-mail."; return; }
+  try {
+    if (criar) await createUserWithEmailAndPassword(auth, email, senha);
+    else await signInWithEmailAndPassword(auth, email, senha);
+  } catch (e) { erroLogin(e); }
+}
+$("form-login").addEventListener("submit", e => { e.preventDefault(); entrar(false); });
+$("btn-criar").addEventListener("click", () => entrar(true));
+$("btn-esqueci").addEventListener("click", async () => {
+  const email = $("l-email").value.trim();
+  if (!email) { $("login-erro").textContent = "Digite o e-mail e toque de novo em Esqueci a senha."; return; }
+  try { await sendPasswordResetEmail(auth, email); $("login-erro").textContent = "Enviamos um e-mail para criar nova senha."; }
+  catch (e) { erroLogin(e); }
+});
+$("btn-sair").addEventListener("click", () => { if (auth) signOut(auth); });
+
+// ── GRAVAR ─────────────────────────────────────────────────────
+const limpo = o => { const r = {}; Object.keys(o).forEach(k => { if (o[k] !== undefined && k !== "id") r[k] = o[k]; }); return r; };
+async function gravar(reg) {
+  const corpo = limpo(reg);
+  corpo.atualizado = new Date().toISOString();
+  if (auth && auth.currentUser) corpo.por = auth.currentUser.email || "";
+  try { await setDoc(doc(db, "registros", reg.id), corpo); return true; }
+  catch (e) { toast(e && e.code === "permission-denied" ? "Esta conta não pode salvar." : "Não consegui salvar. Tente de novo."); return false; }
+}
+async function apagar(id) {
+  try { await deleteDoc(doc(db, "registros", id)); return true; }
+  catch (e) { toast("Não consegui excluir. Tente de novo."); return false; }
+}
+// Sem internet, a gravação fica guardada no aparelho e só termina quando volta a conexão.
+// Por isso a tela fecha e avisa logo, sem esperar a confirmação.
+function gravarSemEsperar(reg, msg) {
+  const p = gravar(reg);
+  if (!navigator.onLine) toast(msg + " no aparelho · envia quando houver internet");
+  else p.then(ok => { if (ok) toast(msg + " ✓"); });
+}
+
+// ── UTILITÁRIOS ────────────────────────────────────────────────
+const esc = s => String(s == null ? "" : s).replace(/[&<>"']/g, c => ({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;" }[c]));
+const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
+const dataBR = d => d ? d.split("-").reverse().join("/") : "";
+const hojeISO = () => { const d = new Date(); return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0"); };
+function catsParaAba(aba) {
+  if (aba === "suprimentos") return [...CAT_SUPRIMENTOS];
+  if (aba === "manutencoes") return Object.keys(ICONES).filter(c => !CAT_SUPRIMENTOS.has(c));
+  return null;
+}
+function diasDesde(data) {
+  if (!data) return null;
+  const hoje = new Date(); hoje.setHours(0, 0, 0, 0);
+  return Math.round((hoje - new Date(data + "T00:00:00")) / 86400000);
+}
+function parseValor(v) {
+  if (!v) return null;
+  const n = parseFloat(String(v).replace(/[^\d,.-]/g, "").replace(/\./g, "").replace(",", "."));
+  return isNaN(n) ? null : n;
+}
+const historicoItem = d => dados.filter(x => x.categoria === d.categoria && x.item === d.item && x.data).sort((a, b) => a.data.localeCompare(b.data));
+function filtrados() {
+  const catsAba = catsParaAba(abaAtual), q = buscaAtual.toLowerCase();
+  return dados.filter(d =>
+    (!catsAba || catsAba.includes(d.categoria)) &&
+    (!filtroAtual || d.categoria === filtroAtual) &&
+    (!q || [d.item, d.categoria, d.acao, d.forn, d.obs, d.spec].some(f => (f || "").toLowerCase().includes(q)))
+  ).sort((a, b) => (b.data || "").localeCompare(a.data || ""));
+}
+function badge(reg) {
+  if (CAT_SUPRIMENTOS.has(reg.categoria)) {
+    const dias = diasDesde(reg.data);
+    if (dias === null) return "";
+    return '<span class="badge badge-ok">' + (dias === 0 ? "Hoje" : dias + "d atrás") + "</span>";
+  }
+  if (!reg.proxima) return "";
+  const diff = -diasDesde(reg.proxima);
+  if (diff < 0) return '<span class="badge badge-danger">Vencida</span>';
+  if (diff <= 30) return '<span class="badge badge-warn">Em ' + diff + "d</span>";
+  return '<span class="badge badge-ok">' + dataBR(reg.proxima) + "</span>";
+}
+function miniGrafico(hist) {
+  const pts = hist.filter(x => parseValor(x.valor) !== null).slice(-6);
+  if (pts.length < 2) return "";
+  const vals = pts.map(x => parseValor(x.valor));
+  const min = Math.min(...vals), max = Math.max(...vals);
+  const W = 120, H = 32, BAR = 14, GAP = 4;
+  const startX = (W - (pts.length * BAR + (pts.length - 1) * GAP)) / 2;
+  const barras = vals.map((v, i) => {
+    const h = max === min ? H * 0.6 : 6 + ((v - min) / (max - min)) * (H - 8);
+    return '<rect x="' + (startX + i * (BAR + GAP)) + '" y="' + (H - h) + '" width="' + BAR + '" height="' + h + '" rx="3" fill="' + (i === pts.length - 1 ? "var(--accent)" : "var(--border)") + '"/>';
+  }).join("");
+  return '<div class="mini-grafico"><svg width="' + W + '" height="' + H + '" aria-hidden="true">' + barras + '</svg><span class="mini-label">R$ ' + esc(pts[pts.length - 1].valor) + " · " + pts.length + " trocas</span></div>";
+}
+function variacaoPreco(hist) {
+  const cv = hist.filter(x => parseValor(x.valor) !== null);
+  if (cv.length < 2) return "";
+  const a = cv[cv.length - 2], b = cv[cv.length - 1];
+  const ant = parseValor(a.valor), ult = parseValor(b.valor), diff = ult - ant;
+  if (diff === 0) return "Mesmo valor da troca anterior";
+  const pct = Math.abs(diff / ant * 100).toFixed(1).replace(".", ",");
+  return '<span style="color:var(' + (diff > 0 ? "--danger" : "--ok") + ');font-weight:700">' + (diff > 0 ? "↑ " : "↓ ") + pct + "%</span> vs troca anterior (R$ " + esc(a.valor) + " → R$ " + esc(b.valor) + ")";
+}
+
+// ── TELA ───────────────────────────────────────────────────────
+function renderFiltros() {
+  const el = $("filtros"), catsAba = catsParaAba(abaAtual);
+  const cats = [...new Set(dados.filter(d => !catsAba || catsAba.includes(d.categoria)).map(d => d.categoria))].sort();
+  if (cats.length <= 1) { el.innerHTML = ""; return; }
+  el.innerHTML = '<button class="chip' + (!filtroAtual ? " ativo" : "") + '" data-cat="">Todos</button>' +
+    cats.map(c => '<button class="chip' + (filtroAtual === c ? " ativo" : "") + '" data-cat="' + esc(c) + '">' + icone(c) + " " + esc(c) + "</button>").join("");
+  el.querySelectorAll(".chip").forEach(b => b.addEventListener("click", () => { filtroAtual = b.dataset.cat; render(); }));
+}
+function renderLista() {
+  const el = $("lista");
+  if (!carregado) { el.innerHTML = '<div class="vazio"><span class="emoji">🏠</span>Carregando seus registros…</div>'; return; }
+  const itens = filtrados();
+  if (!itens.length) {
+    const emoji = abaAtual === "suprimentos" ? "🛒" : abaAtual === "manutencoes" ? "🔧" : "🏠";
+    el.innerHTML = '<div class="vazio"><span class="emoji">' + emoji + "</span>" + (buscaAtual || filtroAtual ? "Nenhum resultado encontrado." : "Nenhum registro ainda.<br>Toque em ＋ para adicionar ou em ⬆ para importar.") + "</div>";
+    return;
+  }
+  el.innerHTML = "";
+  itens.forEach(d => {
+    const card = document.createElement("div");
+    card.className = "card";
+    card.tabIndex = 0;
+    const corretiva = CAT_SUPRIMENTOS.has(d.categoria);
+    card.innerHTML =
+      '<div class="card-top"><div><div class="card-title">' + icone(d.categoria) + " " + esc(d.item || "Sem nome") + '</div>' +
+      '<div class="card-cat">' + esc(d.categoria) + (d.data ? " · " + dataBR(d.data) : "") + "</div></div>" + badge(d) + "</div>" +
+      '<div class="card-info">' + esc([d.acao, d.forn].filter(Boolean).join(" · ")) + "</div>" +
+      (corretiva ? miniGrafico(historicoItem(d)) : "");
+    card.addEventListener("click", () => abrirDetalhe(d.id));
+    card.addEventListener("keydown", e => { if (e.key === "Enter") abrirDetalhe(d.id); });
+    el.appendChild(card);
+  });
+}
+function render() { renderFiltros(); renderLista(); }
+
+function abrirDetalhe(id) {
+  const d = dados.find(x => x.id === id);
+  if (!d) return;
+  viewId = id;
+  $("det-titulo").textContent = icone(d.categoria) + " " + (d.item || "Registro");
+  const corretiva = CAT_SUPRIMENTOS.has(d.categoria);
+  let duracao = "";
+  if (corretiva && d.data) {
+    const dias = diasDesde(d.data);
+    duracao = dias + " dia" + (dias !== 1 ? "s" : "") + " em uso";
+    const datas = historicoItem(d).map(x => x.data).filter(x => x <= d.data);
+    if (datas.length >= 2) {
+      let soma = 0;
+      for (let i = 1; i < datas.length; i++) soma += Math.round((new Date(datas[i] + "T00:00:00") - new Date(datas[i - 1] + "T00:00:00")) / 86400000);
+      duracao += " · média de " + Math.round(soma / (datas.length - 1)) + " dias por botijão";
+    }
+  }
+  const vp = corretiva ? variacaoPreco(historicoItem(d)) : "";
+  const linhas = [
+    ["Categoria", esc(d.categoria)], ["Data", dataBR(d.data)], ["Ação", esc(d.acao)], ["Especificação", esc(d.spec)],
+    ["Valor", d.valor ? "R$ " + esc(d.valor) : ""], ["Fornecedor", esc(d.forn)], ["Quem fez", esc(d.quem)],
+    ...(corretiva ? [["Duração", duracao], ["Variação de preço", vp]] : [["Próxima revisão", dataBR(d.proxima)]]),
+    ["Observações", esc(d.obs)]
+  ].filter(([, v]) => v);
+  $("det-grid").innerHTML = linhas.map(([l, v]) => '<div class="detalhe-row"><div class="detalhe-label">' + l + '</div><div class="detalhe-val">' + v + "</div></div>").join("");
+  $("ov-detalhe").hidden = false;
+}
+
+function abrirForm(id) {
+  editandoId = id || null;
+  const d = id ? dados.find(x => x.id === id) : null;
+  $("form-titulo").textContent = d ? "Editar registro" : "Novo registro";
+  const cat = (d && d.categoria) || (abaAtual === "suprimentos" ? "Gás de cozinha" : "Chuveiro");
+  $("f-categoria").value = cat;
+  CAMPOS.forEach(k => { $("f-" + k).value = (d && d[k]) || ""; });
+  if (!d) $("f-data").value = hojeISO();
+  $("btn-deletar").hidden = !d;
+  $("confirm-excluir").hidden = true;
+  atualizarProxima(cat);
+  $("ov-detalhe").hidden = true;
+  $("ov-form").hidden = false;
+}
+function atualizarProxima(cat) { $("campo-proxima").hidden = CAT_SUPRIMENTOS.has(cat); }
+function fecharForm() { $("ov-form").hidden = true; $("confirm-excluir").hidden = true; }
+function fecharDet() { $("ov-detalhe").hidden = true; }
+
+function salvarForm() {
+  const item = $("f-item").value.trim();
+  if (!item) { toast("Preencha o nome do item"); $("f-item").focus(); return; }
+  const reg = { id: editandoId || uid(), categoria: $("f-categoria").value };
+  CAMPOS.forEach(k => { reg[k] = $("f-" + k).value.trim(); });
+  if (CAT_SUPRIMENTOS.has(reg.categoria)) reg.proxima = "";
+  const editando = !!editandoId;
+  editandoId = null;
+  fecharForm();
+  gravarSemEsperar(reg, editando ? "Registro atualizado" : "Registro salvo");
+}
+async function confirmarExcluir() {
+  const id = editandoId;
+  editandoId = null;
+  fecharForm();
+  if (await apagar(id)) toast("Registro excluído");
+}
+
+async function exportar() {
+  if (!dados.length) { toast("Nenhum dado para exportar"); return; }
+  const json = JSON.stringify(dados.map(d => Object.assign({}, d)), null, 2);
+  try {
+    const blob = new Blob([json], { type: "application/json" });
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = "governanta_" + hojeISO() + ".json";
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(a.href), 5000);
+    toast("Cópia de segurança baixada ✓");
+  } catch (e) {
+    try { await navigator.clipboard.writeText(json); toast("Dados copiados para a área de transferência"); }
+    catch (e2) { toast("Não foi possível exportar"); }
+  }
+}
+function importar(arquivo) {
+  const r = new FileReader();
+  r.onload = async e => {
+    let arr;
+    try { arr = JSON.parse(e.target.result); if (!Array.isArray(arr)) throw 0; } catch (err) { toast("Arquivo inválido"); return; }
+    const validos = arr.filter(d => d && d.id && d.categoria);
+    let ok = 0;
+    for (const reg of validos) { if (await gravar(reg)) ok++; }
+    toast(ok + " registro(s) importado(s)");
+  };
+  r.readAsText(arquivo);
+}
+
+let toastTimer;
+function toast(msg) {
+  const el = $("toast");
+  el.textContent = msg;
+  el.classList.add("show");
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => el.classList.remove("show"), 3500);
+}
+
+// ── LIGAÇÕES ───────────────────────────────────────────────────
+document.querySelectorAll(".aba").forEach(b => b.addEventListener("click", () => {
+  abaAtual = b.dataset.aba; filtroAtual = "";
+  document.querySelectorAll(".aba").forEach(x => x.classList.toggle("ativa", x === b));
+  render();
+}));
+$("f-categoria").addEventListener("change", e => atualizarProxima(e.target.value));
+$("btn-add").addEventListener("click", () => abrirForm());
+$("btn-salvar").addEventListener("click", salvarForm);
+$("btn-deletar").addEventListener("click", () => { $("confirm-excluir").hidden = false; $("btn-deletar").hidden = true; });
+$("btn-confirm-sim").addEventListener("click", confirmarExcluir);
+$("btn-confirm-nao").addEventListener("click", () => { $("confirm-excluir").hidden = true; $("btn-deletar").hidden = false; });
+$("btn-fechar-form").addEventListener("click", fecharForm);
+$("btn-fechar-det").addEventListener("click", fecharDet);
+$("btn-editar").addEventListener("click", () => abrirForm(viewId));
+$("btn-export").addEventListener("click", exportar);
+$("btn-import").addEventListener("click", () => { $("file-import").value = ""; $("file-import").click(); });
+$("file-import").addEventListener("change", e => { if (e.target.files[0]) importar(e.target.files[0]); });
+$("busca").addEventListener("input", e => { buscaAtual = e.target.value.trim(); renderLista(); });
+$("ov-form").addEventListener("click", e => { if (e.target === e.currentTarget) fecharForm(); });
+$("ov-detalhe").addEventListener("click", e => { if (e.target === e.currentTarget) fecharDet(); });
+document.addEventListener("keydown", e => { if (e.key === "Escape") { fecharForm(); fecharDet(); } });
+</script>
+<script>
+// Se a biblioteca do Firebase não carregar (sem internet na primeira abertura), avisa em vez de ficar em branco.
+setTimeout(function () {
+  if (window.__govOK) return;
+  var t = document.getElementById("tela-config");
+  t.querySelector("p").textContent = "Não consegui carregar o app. Verifique a internet e abra de novo.";
+  t.hidden = false;
+}, 12000);
+</script>
+</body>
+</html>
