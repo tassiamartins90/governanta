@@ -8,10 +8,10 @@
 // do Firestore (arquivo firestore.rules.txt).
 // ─────────────────────────────────────────────────────────────
 window.GOVERNANTA_FIREBASE = {
-  apiKey: "COLE_AQUI",
-  authDomain: "COLE_AQUI",
-  projectId: "COLE_AQUI",
-  storageBucket: "COLE_AQUI",
-  messagingSenderId: "COLE_AQUI",
-  appId: "COLE_AQUI"
+  apiKey: "AIzaSyAlP_UsgkIpEA6OeAeA5XjQmxQhdGEaaXA",
+  authDomain: "governanta-d1513.firebaseapp.com",
+  projectId: "governanta-d1513",
+  storageBucket: "governanta-d1513.firebasestorage.app",
+  messagingSenderId: "510119580321",
+  appId: "1:510119580321:web:0aa637c39ee72b740d56e0"
 };
